@@ -1,0 +1,348 @@
+---
+jupyter:
+  colab:
+    provenance: []
+  jupytext:
+    notebook_metadata_filter: all,-language_info
+    split_at_heading: true
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.16.0
+  kernelspec:
+    display_name: Python 3
+    name: python3
+---
+
+Welcome to your first assignment for Advanced Case studies in data science. Step one, don't worry too much. The aim of this is to get some practice of working with data and reason about it. Most questions require both coding and a text-based answer. Please save your notebooks with outputs, download them and submit them using Canvas. Where text answers are required, I will specify approximately how many lines are required.
+
+**House rules:**
+
+You may Google syntax but do not purely just copy code chunks from the results. Similarly, do not copy code chunks from the results of AI searches.
+
+
+# Dataset 1 - Academic Success (70 marks)
+
+The first dataset is described here:
+<https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success>.
+
+We have downloaded the data for you, as the file `data.csv` in this directory.
+
+Before you try and read the file, have a look at it.  How are the fields and data separated? Then adapt your `pd.read_csv` call to read in the data correctly.  It should have 4424 rows, 37 columns.
+
+```{python}
+import pandas as pd
+```
+
+```{python}
+# Load the data, you will need to modify the read_csv call to
+# make the data read correctly.
+df = pd.read_csv('data.csv')
+df.head().T
+```
+
+See the [read_csv docs](https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html)
+
+Note the target variable is called 'Target'
+
+
+## Dataset 1, Task 1 (15 marks):
+
+Once you have read the dataset, perform the pre-modeling steps discussed in
+class. You are expected to generate univariate and bivariate plots and discuss
+the findings.
+
+
+```{python}
+ # Your code here to review and plot the data.
+ # Make more cells as necessary.   Explain your
+ # approach with text cells.
+
+
+```
+
+Provide a 15 line paragraph discussing the interesting findings from your data
+discovery/exploratory data analysis stage. Make sure this is clearly readable
+and references the plots you have generated
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 1, Task 2 (10 marks)
+
+Does this dataset contain sensitive attributes? Name them, explain why they
+might be sensitive.  What are some interesting observations related to them
+from your data discovery?  This should be about 10 lines of text.
+
+
+**Describe and discuss your findings on sensitive attributes here, replacing this text**.
+
+
+## Dataset 1, Task 3 (5 marks)
+
+Think about what other features would be interesting to have alongside to enhance your dataset? Where might you go find these features? 5-10 lines.
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 1, Task 4 (15 marks)
+
+### Part 1 - Create a benchmark model
+
+The dataset `Target` currently has 3 labels, making it a multiclass problem.
+
+```{python}
+# Investigate the target values
+df['Target'].value_counts()
+```
+
+We will learn more about multiclass problems later in the term, but for now, let us drop the `'Enrolled'` value to make it a binary (two-value) problem:
+
+```{python}
+# Drop the Enrolled rows, leaving a binary target.
+dropout_grad = df[df['Target'].isin(['Dropout', 'Graduate'])]
+dropout_grad['Target'].value_counts()
+```
+
+To start the model, we do a preliminary train / test split.  Remember we used
+this in the [Naive Bayes](https://lisds.github.io/dsip/naive_bayes.html) page.
+
+Here we have selected some random features to use, but you will want to choose better features, and more features.
+
+```{python}
+# https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html
+from sklearn.model_selection import train_test_split
+
+# Here is a preliminary list of features.
+# You should adapt these to give better classification performance.
+features = ['Admission grade', 'Gender', 'Debtor']
+
+# Do the split.
+X_train, X_test, y_train, y_test = train_test_split(
+    dropout_grad[features],
+    dropout_grad['Target'],
+    test_size=0.8)  # Train 80%, Test 20%
+X_train
+```
+
+As a first pass, we suggest you use logistic regression to classify our target
+binary variable.  Here we make a model with the given features.
+
+Here is what what the logistic regression would look like in Statsmodels.  This
+should be familiar to you from [the logistic regression page in the textbook](https://lisds.github.io/textbook/more-regression/logistic_regression.html).
+
+```{python}
+import statsmodels.formula.api as smf
+
+# Make a dummy (0, 1) variable from the string variable.[:w
+dummy = (y_train == 'Graduate').astype(int)
+
+# Put the dummy variable into a data frame for Statsmodels.
+both = pd.concat((dummy, X_train), axis=1)
+
+# Set up the model.
+model = smf.logit('Target ~ Q("Admission grade") + Gender + Debtor',
+                  data=both)
+# Fit and summarize.
+fit = model.fit()
+fit.summary()
+```
+
+Here is the same procedure using Scikit-learn.
+
+```{python}
+# https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+from sklearn.linear_model import LogisticRegression
+
+# Notice the penalty=None; this corresponds to the Statsmodels
+# setting above.  Look at the help URL above for more information.
+clf = LogisticRegression(penalty=None).fit(X_train, y_train)
+print('Intercept', clf.intercept_)
+print('Coefficients', clf.coef_)
+```
+
+Notice that the coefficients and the intercept coefficient are the same in both cases — the two libraries are applying the same procedure.
+
+Now let us do a preliminary classification using these parameters.  The model
+will classify an observation as a 0 if the predicted probability is less than
+0.5, and 1 otherwise.
+
+```{python}
+# Predict the categories for the test data.
+predicted = clf.predict(X_test)
+predicted
+```
+
+Now we use some metric to evaluate how well the model did in predicting the
+output.  See [metrics and
+scoring](https://scikit-learn.org/stable/modules/model_evaluation.html) in the
+Scikit-learn documentation for discussion of the various metrics one could use
+to assess how successful these predictions are.
+
+```{python}
+from sklearn import metrics
+
+metrics.accuracy_score(y_test, predicted)
+```
+
+Now your turn.
+
+Use all applicable features, doing any feature transformations you think will improve the model performance.  Decide on a suitable performance metric.
+
+```{python}
+# Your code here for model fitting and evaluation.
+# Add cells as you need them.
+```
+
+Now comment on your model performance (5-10 lines).
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+### Part 2 - Drop the sensitive attributes and investigate performance again 
+
+```{python}
+# Your code here.  Add any cells you need.
+```
+
+Comment on key difference in your model performance (up to 5 lines).
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 1, Tast 5 (10 marks)
+
+Create a random forest model, for this dataset.
+
+Work with the default parameters and without sensitive attributes. Compare the
+performance with the Task 4 part 2 model (up to 10 lines)
+
+```{python}
+# code for random forest
+```
+
+Note: we will cover random forest implementations on Friday 19th.
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 1, Task 6 (5 marks)
+
+Tune the parameters of your random forest model to improve performance. Share you new parameters and the performance (you might need a validation set - this will be covered in class Thursday 18th)
+
+```{python}
+# code for parameter tuning
+```
+
+## Dataset 1, Task 7 (5 marks)
+
+Is your model biased in any way? Post modeling, look at different groups on
+sensitive attributes and see if performance is very different. For example, one
+thing you might investigate could be "do I misclassify women more than men?".
+
+(5-10 lines)
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 1, Task 8 (5 marks)
+
+Using the SHAP library, generate the summary plot.  We will cover the SHAP
+library at the end of week 2.
+
+```{python}
+# code for SHAP plots
+```
+
+Discuss the influence of key features on the target. (up to 10 lines)
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+# Dataset 2 - New York Taxi data (30 marks)
+
+New York City distributes data on [Taxi and Limosine
+trips](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page).
+
+Here we are going to be looking at the Yellow Cab trip data for February 2023.
+
+We have made your job a bit easier by downloading the Yellow Cab trip data for February 2023, and then taking a 10% random sample, to reduce disk space and processing time, with the following code (you do not need to run this code):
+
+```python
+# Load data from download.  The original data is in Parquet format.
+df = pd.read_parquet('yellow_tripdata_2023-02.parquet')
+# Take a 10% random sample.
+sample = df.sample(frac=0.1)
+# Save to CSV
+sample.to_csv('yellow_cab_trips_02_2023.csv', index=None)
+```
+
+The data that you will be working on is the following:
+
+```{python}
+taxi_df = pd.read_csv('yellow_cab_trips_02_2023.csv')
+taxi_df.head().T
+```
+
+Can you predict the trip distance using the existing features? (Pay attention to target leak, you could for instance start with time of day and starting location)
+
+Put yourself in the shoes of someone trying to predict the distance before picking up a passenger.
+
+Our question here is — can you predict the **trip distance** using the existing
+features? (Pay attention to target leak, you could for instance start with time
+of day and starting location) (see below).
+
+
+## Dataset 2, Task 1 (5 marks)
+
+This is a very different type of data than the one before. What are some key things you can learn about the target and what features can you use without leak (information that would not be available until after the trip distance is known)?. Perform some exploratory data analysis.
+
+```{python}
+# code for Exploratory Data Analysis
+```
+
+Now highlight interesting things you have found, in 10 lines.
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 2, Task 2 (15 marks)
+
+Prepare your data for modelling - even if you model using only 2-3 features,
+you might need some transformations to use timestamps.  You might or might now
+consider using `pd.to_datetime` on the timestamp columns, and then using the
+datetime (.`.dt`) features of the new Series as modeling features.
+
+```{python}
+# code for data prep
+```
+
+Highlight which features you selected and why, and the transformations you
+found necessary in up to 10 lines.
+
+
+**Your paragraph answer should go here, replacing this text**
+
+
+## Dataset 2, Task 3 (10 marks)
+
+Run a regression model (you can use linear or tree based models for this).
+
+```{python}
+#code for regression model
+```
+
+How is the model performance? What would you do to further improve it (up to 15
+lines)
+
+
+**Your paragraph answer should go here, replacing this text**
